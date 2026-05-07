@@ -1,0 +1,7 @@
+services:
+  checker:
+    build: .
+    env_file: .env
+    volumes:
+      - ./config.json:/app/config.json
+    restart: unless-stopped
