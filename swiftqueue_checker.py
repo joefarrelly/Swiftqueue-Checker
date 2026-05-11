@@ -61,7 +61,7 @@ def _register(chat_id: str, name: str) -> None:
         _save_chat_ids()
     log.info("Registered %s (%s)", name, chat_id)
     _send(
-        [chat_id],
+        [{"id": chat_id, "name": name}],
         "You're registered! You'll receive alerts when a SwiftQueue slot becomes available.",
     )
 
