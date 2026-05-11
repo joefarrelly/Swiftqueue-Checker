@@ -39,7 +39,7 @@ Message [@BotFather](https://t.me/BotFather) on Telegram, send `/newbot`, and co
 **2. Clone and configure**
 
 ```bash
-git clone https://github.com/your-username/swiftqueue-checker
+git clone https://github.com/joefarrelly/Swiftqueue-Checker
 cd swiftqueue-checker
 cp .env.example .env
 ```
@@ -49,6 +49,7 @@ Edit `.env`:
 ```env
 TELEGRAM_TOKEN=your_bot_token_here
 TARGET_DATE=19/05/2026
+SWIFTQUEUE_URL=your_swiftqueue_url_here
 ```
 
 **3. Start**
@@ -114,7 +115,7 @@ Don't see your area? SwiftQueue URLs follow the pattern `https://www.swiftqueue.
 | File | Purpose |
 |---|---|
 | `.env` | Your bot token, target date, and location — keep this private, don't commit it |
-| `config.json` | Auto-managed list of registered chat IDs and display names (not committed — see `config.example.json`) |
+| `config/config.json` | Auto-managed list of registered chat IDs and display names (gitignored — see `config.example.json`) |
 
 To change your target date or location, update `.env` and restart the container:
 
@@ -122,7 +123,7 @@ To change your target date or location, update `.env` and restart the container:
 docker-compose restart
 ```
 
-To remove a device, delete their entry from `config.json`. The container picks up the change on next restart.
+To remove a device, delete their entry from `config/config.json`. The container picks up the change on next restart.
 
 ## Running without Docker
 

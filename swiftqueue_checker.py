@@ -31,7 +31,7 @@ CHECK_EVERY = 60
 
 # ── Persistence ───────────────────────────────────────────────────────────────
 
-CONFIG_FILE  = Path(__file__).parent / "config.json"
+CONFIG_FILE  = Path(__file__).parent / "config" / "config.json"
 _chat_ids: list[dict] = []  # [{"id": "...", "name": "..."}]
 _lock = threading.Lock()
 
