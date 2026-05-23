@@ -6,8 +6,6 @@ services:
       - ./data:/app/data
     env_file: .env
     restart: unless-stopped
-    networks:
-      - web
 
   checker:
     build: .
@@ -16,9 +14,3 @@ services:
       - ./data:/app/data
     env_file: .env
     restart: unless-stopped
-    networks:
-      - web
-
-networks:
-  web:
-    external: true
