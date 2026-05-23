@@ -14,6 +14,11 @@ from app.scraper import fetch_slots
 bp = Blueprint("main", __name__)
 
 
+@bp.route("/sw.js")
+def service_worker():
+    return current_app.send_static_file("sw.js")
+
+
 @bp.route("/")
 def index():
     return render_template(
@@ -45,10 +50,17 @@ def register():
     if push_subscription is None:
         return jsonify({"error": "Push subscription required"}), 400
 
-    token = secrets.token_urlsafe(32)
     sub_json = json.dumps(push_subscription)
+    endpoint = push_subscription.get("endpoint", "")
 
     with get_db() as conn:
+        existing = conn.execute(
+            "SELECT token FROM users WHERE push_subscription LIKE ? AND active=1",
+            (f'%{endpoint}%',),
+        ).fetchone()
+        if existing:
+            return jsonify({"token": existing["token"]})
+        token = secrets.token_urlsafe(32)
         conn.execute(
             "INSERT INTO users (token, area_url, target_date, push_subscription) VALUES (?,?,?,?)",
             (token, area_url, target_date, sub_json),
@@ -63,13 +75,64 @@ def register():
     return jsonify({"token": token})
 
 
+@bp.route("/registration/<token>")
+def registration(token: str):
+    with get_db() as conn:
+        user = conn.execute(
+            "SELECT area_url, target_date FROM users WHERE token=? AND active=1", (token,)
+        ).fetchone()
+    if not user:
+        return jsonify({"error": "not found"}), 404
+    area_name = next((k for k, v in AREAS.items() if v == user["area_url"]), user["area_url"])
+    return jsonify({"area_name": area_name, "target_date": user["target_date"]})
+
+
+@bp.route("/status")
+def status():
+    with get_db() as conn:
+        watched = conn.execute(
+            """SELECT area_url, COUNT(*) as user_count
+               FROM users WHERE active=1
+               GROUP BY area_url"""
+        ).fetchall()
+        slots = conn.execute(
+            """SELECT url, slot_date, slot_time, clinic, first_seen_at, seen_at
+               FROM active_slots
+               ORDER BY url, slot_date, slot_time"""
+        ).fetchall()
+    return render_template("status.html", watched=watched, slots=slots)
+
+
 @bp.route("/unsubscribe/<token>", methods=["GET", "POST"])
 def unsubscribe(token: str):
+    with get_db() as conn:
+        user = conn.execute(
+            "SELECT area_url, target_date FROM users WHERE token=? AND active=1", (token,)
+        ).fetchone()
+
+    if not user:
+        return render_template("unsubscribe.html", done=True, not_found=True)
+
+    area_name = next((k for k, v in AREAS.items() if v == user["area_url"]), user["area_url"])
+
     if request.method == "POST":
         with get_db() as conn:
             conn.execute("UPDATE users SET active=0 WHERE token=?", (token,))
+            remaining = conn.execute(
+                "SELECT COUNT(*) FROM users WHERE area_url=? AND active=1",
+                (user["area_url"],),
+            ).fetchone()[0]
+            if remaining == 0:
+                conn.execute("DELETE FROM active_slots WHERE url=?", (user["area_url"],))
         return render_template("unsubscribe.html", done=True)
-    return render_template("unsubscribe.html", token=token, done=False)
+
+    return render_template(
+        "unsubscribe.html",
+        token=token,
+        done=False,
+        area_name=area_name,
+        target_date=user["target_date"],
+    )
 
 
 def _notify_existing_slots(area_url: str, target_dt: datetime, sub_json: str) -> None:

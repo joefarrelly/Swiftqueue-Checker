@@ -7,6 +7,7 @@
     <title>SwiftQueue Checker</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="manifest" href="/static/manifest.json">
+    <script>if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.scope.includes('/static') && r.unregister()));</script>
 </head>
 <body>
 <main>
@@ -15,8 +16,8 @@
         <p>Get notified the moment an appointment slot opens up before your target date.</p>
 
         <div id="existing-hint" class="hint-box" hidden>
-            You're already registered.
-            <a href="#">Unsubscribe</a> or register below to update your preferences.
+            <span class="hint-detail">You're already registered.</span>
+            <a href="#">Unsubscribe</a> to change your preferences.
         </div>
 
         <form id="register-form" novalidate>

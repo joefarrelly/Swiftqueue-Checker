@@ -6,8 +6,11 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 async function getPushSubscription() {
-    const reg = await navigator.serviceWorker.register("/static/sw.js");
-    await navigator.serviceWorker.ready;
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Service worker timed out — try refreshing.")), 10000)
+    );
+    await Promise.race([navigator.serviceWorker.ready, timeout]);
     const existing = await reg.pushManager.getSubscription();
     if (existing) return existing;
     return reg.pushManager.subscribe({
@@ -74,18 +77,39 @@ document.getElementById("register-form").addEventListener("submit", async (e) =>
 
         showSuccess(data.token);
     } catch (err) {
+        console.error("Registration error:", err);
         btn.disabled = false;
         btn.textContent = "Get Notified";
-        showError(err.message);
+        showError(err.message || String(err));
     }
 });
 
-// Re-surface unsubscribe link if already registered
+// Block re-registration if already registered
 const existingToken = localStorage.getItem("swiftqueue_token");
 if (existingToken) {
     const hint = document.getElementById("existing-hint");
+    const btn = document.querySelector("#register-form button[type=submit]");
+
+    if (btn) {
+        btn.disabled = true;
+        btn.title = "Unsubscribe first to change your settings.";
+    }
+
     if (hint) {
-        hint.querySelector("a").href = `/unsubscribe/${existingToken}`;
-        hint.hidden = false;
+        fetch(`/registration/${existingToken}`)
+            .then((r) => r.ok ? r.json() : null)
+            .then((data) => {
+                const unsubLink = hint.querySelector("a");
+                unsubLink.href = `/unsubscribe/${existingToken}`;
+                if (data) {
+                    hint.querySelector(".hint-detail").textContent =
+                        `You're watching ${data.area_name} for slots on or before ${data.target_date}.`;
+                }
+                hint.hidden = false;
+            })
+            .catch(() => {
+                hint.querySelector("a").href = `/unsubscribe/${existingToken}`;
+                hint.hidden = false;
+            });
     }
 }
