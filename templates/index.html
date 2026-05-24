@@ -42,8 +42,12 @@
     <form id="register-form" novalidate>
         <div id="form-fields">
             <div class="field">
-                <label for="area_url">Area</label>
-                <select name="area_url" id="area_url" required>
+                <label for="area-search">Area</label>
+                <div class="combobox" id="area-combobox">
+                    <input type="text" id="area-search" autocomplete="off" placeholder="Search areas…">
+                    <ul id="area-listbox" hidden></ul>
+                </div>
+                <select name="area_url" id="area_url" hidden>
                     <option value="">Select an area…</option>
                     {% for name, url in areas.items() %}
                     <option value="{{ url }}">{{ name }}</option>
@@ -61,6 +65,7 @@
 
         <button type="submit" id="submit-btn" class="btn-primary">Get Notified</button>
     </form>
+    <p class="disclaimer">If you book an earlier slot, please cancel your original appointment so others can use it.</p>
 </main>
 
 <script>
