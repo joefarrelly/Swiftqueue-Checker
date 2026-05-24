@@ -1,3 +1,109 @@
+// ── Area combobox ─────────────────────────────────────────────────────────────
+
+function initCombobox() {
+    const input = document.getElementById("area-search");
+    const listbox = document.getElementById("area-listbox");
+    const select = document.getElementById("area_url");
+
+    const options = Array.from(select.options)
+        .filter(o => o.value)
+        .map(o => ({ value: o.value, label: o.text }));
+
+    let activeIndex = -1;
+
+    function renderOptions(filter) {
+        const q = filter.trim().toLowerCase();
+        const matches = q ? options.filter(o => o.label.toLowerCase().includes(q)) : options;
+        if (matches.length === 0) {
+            listbox.innerHTML = '<li class="no-results">No areas found</li>';
+        } else {
+            listbox.innerHTML = matches.map((o, i) =>
+                `<li data-value="${o.value}" data-index="${i}">${o.label}</li>`
+            ).join("");
+        }
+        activeIndex = -1;
+        listbox.hidden = false;
+    }
+
+    function selectOption(value, label) {
+        select.value = value;
+        input.value = label;
+        input.dataset.selected = "1";
+        listbox.hidden = true;
+        activeIndex = -1;
+    }
+
+    function close() {
+        listbox.hidden = true;
+        activeIndex = -1;
+    }
+
+    input.addEventListener("focus", () => renderOptions(input.dataset.selected ? "" : input.value));
+
+    input.addEventListener("input", () => {
+        if (!input.value) {
+            select.value = "";
+            delete input.dataset.selected;
+        } else {
+            delete input.dataset.selected;
+        }
+        renderOptions(input.value);
+    });
+
+    input.addEventListener("keydown", (e) => {
+        const items = listbox.querySelectorAll("li:not(.no-results)");
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            activeIndex = Math.min(activeIndex + 1, items.length - 1);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            activeIndex = Math.max(activeIndex - 1, 0);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (activeIndex >= 0 && items[activeIndex]) {
+                const item = items[activeIndex];
+                selectOption(item.dataset.value, item.textContent);
+            }
+            return;
+        } else if (e.key === "Escape") {
+            close();
+            return;
+        } else {
+            return;
+        }
+        items.forEach((item, i) => item.classList.toggle("active", i === activeIndex));
+        if (activeIndex >= 0) items[activeIndex].scrollIntoView({ block: "nearest" });
+    });
+
+    listbox.addEventListener("mousedown", (e) => {
+        const item = e.target.closest("li[data-value]");
+        if (!item) return;
+        e.preventDefault();
+        selectOption(item.dataset.value, item.textContent);
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!input.contains(e.target) && !listbox.contains(e.target)) {
+            if (!input.dataset.selected) {
+                input.value = "";
+                select.value = "";
+            }
+            close();
+        }
+    });
+
+    return {
+        reset() {
+            input.value = "";
+            select.value = "";
+            delete input.dataset.selected;
+            close();
+        }
+    };
+}
+
+const combobox = initCombobox();
+
 const SCRAPE_INTERVAL_MS = 60_000;
 const POLL_BUFFER_MS = 5_000;
 const MIN_POLL_DELAY_MS = 5_000;
@@ -165,6 +271,7 @@ function showUnregisteredState() {
 
     document.getElementById("form-fields").hidden = false;
     document.getElementById("registered-state").hidden = true;
+    combobox.reset();
 
     const btn = document.getElementById("submit-btn");
     btn.textContent = "Get Notified";
@@ -182,6 +289,11 @@ function showUnregisteredState() {
 // ── Form handlers ─────────────────────────────────────────────────────────────
 
 async function handleRegister(form) {
+    if (!form.area_url.value) {
+        showError("Please select an area.");
+        return;
+    }
+
     const btn = document.getElementById("submit-btn");
     btn.disabled = true;
     btn.textContent = "Setting up…";

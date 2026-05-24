@@ -63,7 +63,6 @@ label {
     color: #333;
 }
 
-select,
 input[type="date"] {
     width: 100%;
     padding: 0.625rem 0.75rem;
@@ -75,18 +74,64 @@ input[type="date"] {
     appearance: none;
 }
 
-select {
-    padding-right: 2.25rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 0.625rem center;
-}
-
-select:focus,
 input[type="date"]:focus {
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.combobox {
+    position: relative;
+}
+
+.combobox input {
+    width: 100%;
+    padding: 0.625rem 2.25rem 0.625rem 0.75rem;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #1a1a1a;
+    background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 0.625rem center;
+}
+
+.combobox input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+#area-listbox {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    z-index: 10;
+    list-style: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+#area-listbox li {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    color: #1a1a1a;
+}
+
+#area-listbox li:hover,
+#area-listbox li.active {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+#area-listbox .no-results {
+    color: #aaa;
+    cursor: default;
+    font-size: 0.875rem;
 }
 
 #error-msg {
@@ -296,4 +341,11 @@ input[type="date"]:focus {
 
 a {
     color: #2563eb;
+}
+
+.disclaimer {
+    margin-top: 2rem;
+    font-size: 0.8125rem;
+    color: #6b7280;
+    text-align: center;
 }
