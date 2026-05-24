@@ -12,12 +12,13 @@ SwiftQueue Checker is a web app that watches SwiftQueue for appointment slots be
 
 ## How it works
 
-- Register via the web UI: pick your area and target date
+- Register via the web UI: search for your area and set a target date
 - Available slots matching your criteria appear on the page and update automatically
 - Optionally link a Telegram account to receive alerts directly in Telegram
 - Multiple Telegram accounts can link to the same registration — share the link with anyone who should also get notified
 - The background checker polls all watched areas every 60 seconds
 - When a slot disappears, the corresponding Telegram message is edited to show it's gone
+- When your target date passes, your subscription is automatically cancelled and you'll receive a Telegram notification
 
 ## Example Telegram alert
 
@@ -73,28 +74,48 @@ The web UI is available at `http://localhost:5000`.
 | `SECRET_KEY` | Yes | Flask session secret — any long random string |
 | `TELEGRAM_TOKEN` | No | Bot token from BotFather — enables Telegram alerts |
 | `TELEGRAM_BOT_USERNAME` | No | e.g. `MySwiftQueueBot` — shows the Link Telegram button in the UI |
+| `ADMIN_CHAT_ID` | No | Your Telegram chat ID — receives an alert if a URL fails to scrape 3 times in a row |
 
 ## Available locations
 
-| Area | URL |
-|------|-----|
-| Wrightington, Wigan and Leigh NHS Phlebotomy Clinics | `https://www.swiftqueue.co.uk/wigan.php` |
-| Northampton General Hospital Network | `https://www.swiftqueue.co.uk/northampton.php` |
-| Coventry and Warwickshire Blood Tests | `https://www.swiftqueue.co.uk/uhcw.php` |
-| Medway Phlebotomy Network | `https://www.swiftqueue.co.uk/medway.php` |
-| Royal Berkshire Blood Tests | `https://www.swiftqueue.co.uk/royal_berkshire.php` |
-| West Suffolk NHS | `https://www.swiftqueue.co.uk/west_suffolk.php` |
-| Plymouth Adult Blood Test | `https://www.swiftqueue.co.uk/plymouth_adult_blood_test.php` |
-| East London NHS Phlebotomy Clinics | `https://www.swiftqueue.co.uk/elft.php` |
-| Whittington Health NHS Trust | `https://www.swiftqueue.co.uk/whittington.php` |
-| University College London Hospitals | `https://www.swiftqueue.co.uk/UCLH_CC.php` |
-| Frimley Health NHS Foundation Trust Bloods | `https://www.swiftqueue.co.uk/fhftpaeds.php` |
-| Lewisham and Greenwich NHS Trust | `https://www.swiftqueue.co.uk/lewisham.php` |
-| Newham University Hospital Phlebotomy | `https://www.swiftqueue.co.uk/NUH_Phlebotomy.php` |
-| East Sussex Phlebotomy | `https://www.swiftqueue.co.uk/east_sussex_phlebotomy.php` |
-| Pathology First Blood Test Clinic Network | `https://www.swiftqueue.co.uk/ippmain.php` |
+32 areas currently supported. The area dropdown on the page is searchable — start typing to filter.
 
-Don't see your area? Add it to `app/areas.py` — SwiftQueue URLs follow the pattern `https://www.swiftqueue.co.uk/<slug>.php`. Raise a PR to share it.
+| Area |
+|------|
+| Barking, Havering and Redbridge University Hospitals |
+| Buckinghamshire Healthcare NHS Trust |
+| Coventry and Warwickshire Blood Tests |
+| East London NHS Phlebotomy Clinics |
+| East Sussex Phlebotomy |
+| Frimley Health NHS Foundation Trust Bloods |
+| Hertfordshire Community NHS Trust |
+| Homerton Healthcare NHS Foundation Trust |
+| Lewisham and Greenwich NHS Trust |
+| Medway Phlebotomy Network |
+| Mid Essex Phlebotomy Network |
+| NELFT Barking, Dagenham, Havering and Redbridge |
+| NELFT Waltham Forest Phlebotomy |
+| Newham University Hospital Phlebotomy |
+| North Middlesex University Hospital Blood Tests |
+| North Warwickshire Blood Test Clinics |
+| Northampton General Hospital Network |
+| Pathology First Blood Test Clinic Network |
+| Plymouth Adult Blood Test |
+| Princess Alexandra Hospital, Harlow |
+| Royal Berkshire Blood Tests |
+| Royal Free London NHS Foundation Trust |
+| Royal Surrey Hospital NHS Foundation Trust |
+| Surrey and Sussex Healthcare NHS Trust |
+| Synnovis GP Referral (King's, Guy's & St Thomas') |
+| Synnovis Outpatient Phlebotomy (King's, Guy's & St Thomas') |
+| University College London Hospitals |
+| University Hospitals of Derby and Burton |
+| West Hertfordshire Teaching Hospitals |
+| West Suffolk NHS |
+| Whittington Health NHS Trust |
+| Wrightington, Wigan and Leigh NHS Phlebotomy Clinics |
+
+Don't see your area? Open an issue or raise a PR — SwiftQueue URLs follow the pattern `https://www.swiftqueue.co.uk/<slug>.php`. Add it to `app/areas.py`.
 
 ## Running without Docker
 
@@ -111,3 +132,7 @@ python -m checker.worker              # checker (terminal 2)
 ```bash
 docker compose logs -f
 ```
+
+---
+
+Found a bug or your area isn't listed? [Open an issue on GitHub](https://github.com/joefarrelly/swiftqueue-checker/issues).

@@ -16,7 +16,11 @@ from app.scraper import fetch_slots
 log = logging.getLogger(__name__)
 
 _TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+_ADMIN_CHAT_ID = os.environ.get("ADMIN_CHAT_ID", "")
 _CHECK_EVERY = 60
+_SCRAPE_FAIL_THRESHOLD = 3
+
+_scrape_failures: dict[str, int] = {}
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -77,6 +81,51 @@ def _store_telegram_message(
                VALUES (?,?,?,?,?,?,?)""",
             (token, chat_id, message_id, url, slot_date, slot_time, clinic),
         )
+
+
+# ── Subscription expiry ───────────────────────────────────────────────────────
+
+
+def _expire_stale_subscriptions() -> None:
+    today = datetime.now().strftime("%Y-%m-%d")
+    notifications: list[tuple[str, str]] = []
+    with get_db() as conn:
+        expired = conn.execute(
+            "SELECT token, area_url, target_date FROM users WHERE active=1 AND target_date < ?",
+            (today,),
+        ).fetchall()
+        if not expired:
+            return
+        for user in expired:
+            token = user["token"]
+            area_name = next(
+                (k for k, v in AREAS.items() if v == user["area_url"]),
+                user["area_url"],
+            )
+            target_friendly = datetime.strptime(
+                user["target_date"], "%Y-%m-%d"
+            ).strftime("%-d %B %Y")
+            subscribers = conn.execute(
+                "SELECT chat_id FROM telegram_subscribers WHERE token=?",
+                (token,),
+            ).fetchall()
+            conn.execute("UPDATE users SET active=0 WHERE token=?", (token,))
+            conn.execute("DELETE FROM telegram_subscribers WHERE token=?", (token,))
+            conn.execute("DELETE FROM telegram_messages WHERE token=?", (token,))
+            log.info(
+                "Expired subscription %s (target date %s passed)",
+                token,
+                user["target_date"],
+            )
+            msg = (
+                f"⏰ Your target date of {target_friendly} for <b>{area_name}</b> has passed, "
+                f"so we've stopped watching for slots.\n\n"
+                f"Visit the website if you'd like to register for a new date."
+            )
+            for sub in subscribers:
+                notifications.append((sub["chat_id"], msg))
+    for chat_id, msg in notifications:
+        send_telegram(chat_id, msg)
 
 
 # ── Poll ──────────────────────────────────────────────────────────────────────
@@ -192,9 +241,16 @@ def _poll_url(url: str, previous: dict[str, set[tuple[str, str, str]]]) -> None:
                 (url, now),
             )
         previous[url] = current
+        _scrape_failures[url] = 0
 
     except Exception as e:
         log.warning("Poll error for %s: %s", url, e)
+        _scrape_failures[url] = _scrape_failures.get(url, 0) + 1
+        if _scrape_failures[url] == _SCRAPE_FAIL_THRESHOLD and _ADMIN_CHAT_ID:
+            send_telegram(
+                _ADMIN_CHAT_ID,
+                f"⚠️ <b>Scrape failing</b>\n\n{url}\n\nhas failed {_SCRAPE_FAIL_THRESHOLD} times in a row.\n\n{e}",
+            )
 
 
 # ── Telegram helpers ─────────────────────────────────────────────────────────
@@ -409,6 +465,7 @@ def main() -> None:
         ).start()
 
     while True:
+        _expire_stale_subscriptions()
         urls = _get_watched_urls()
         for i, url in enumerate(urls):
             if i > 0:
