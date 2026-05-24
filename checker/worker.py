@@ -267,29 +267,112 @@ def _run_telegram_listener() -> None:
                 msg = update.get("message", {})
                 text = msg.get("text", "")
                 chat_id = str(msg.get("chat", {}).get("id", ""))
-                if not chat_id or not text.startswith("/start "):
+                if not chat_id:
+                    continue
+                if text.strip() == "/start":
+                    send_telegram(
+                        chat_id,
+                        "⚠️ No token found. Please use the link from the SwiftQueue Checker website to link your account.",
+                    )
+                    continue
+                if not text.startswith("/start "):
                     continue
                 token = text.split(" ", 1)[1].strip()
+                if not token:
+                    send_telegram(
+                        chat_id,
+                        "⚠️ No token found. Please use the link from the SwiftQueue Checker website to link your account.",
+                    )
+                    continue
                 with get_db() as conn:
                     user = conn.execute(
-                        "SELECT area_url FROM users WHERE token=? AND active=1",
+                        "SELECT area_url, target_date FROM users WHERE token=? AND active=1",
                         (token,),
                     ).fetchone()
                     if not user:
                         continue
-                    conn.execute(
-                        "INSERT OR IGNORE INTO telegram_subscribers (token, chat_id) VALUES (?,?)",
-                        (token, chat_id),
-                    )
+                    existing = conn.execute(
+                        "SELECT token FROM telegram_subscribers WHERE chat_id=?",
+                        (chat_id,),
+                    ).fetchall()
+                    existing_tokens = {r["token"] for r in existing}
+                    if existing_tokens == {token}:
+                        already_linked = True
+                        prev_area_name = None
+                    elif token in existing_tokens:
+                        # linked to this token plus others — clean up the others
+                        already_linked = False
+                        prev_area_name = None
+                        prev_target_friendly = None
+                        for old_token in existing_tokens - {token}:
+                            conn.execute(
+                                "DELETE FROM telegram_subscribers WHERE token=? AND chat_id=?",
+                                (old_token, chat_id),
+                            )
+                    elif existing_tokens:
+                        # linked to a different subscription — switch
+                        already_linked = False
+                        old_token = next(iter(existing_tokens))
+                        old_user = conn.execute(
+                            "SELECT area_url, target_date FROM users WHERE token=?",
+                            (old_token,),
+                        ).fetchone()
+                        if old_user:
+                            prev_area_name = next(
+                                (
+                                    k
+                                    for k, v in AREAS.items()
+                                    if v == old_user["area_url"]
+                                ),
+                                old_user["area_url"],
+                            )
+                            prev_target_friendly = datetime.strptime(
+                                old_user["target_date"], "%Y-%m-%d"
+                            ).strftime("%-d %B %Y")
+                        else:
+                            prev_area_name = None
+                            prev_target_friendly = None
+                        conn.execute(
+                            "DELETE FROM telegram_subscribers WHERE chat_id=?",
+                            (chat_id,),
+                        )
+                    else:
+                        already_linked = False
+                        prev_area_name = None
+                        prev_target_friendly = None
+                    if not already_linked:
+                        conn.execute(
+                            "INSERT OR IGNORE INTO telegram_subscribers (token, chat_id) VALUES (?,?)",
+                            (token, chat_id),
+                        )
                 area_name = next(
                     (k for k, v in AREAS.items() if v == user["area_url"]),
                     user["area_url"],
                 )
-                log.info("Linked Telegram chat %s via token", chat_id)
-                send_telegram(
-                    chat_id,
-                    f"✅ Telegram linked! You'll receive SwiftQueue alerts here for <b>{area_name}</b>.",
+                target_friendly = datetime.strptime(
+                    user["target_date"], "%Y-%m-%d"
+                ).strftime("%-d %B %Y")
+                watching_text = (
+                    f"You're watching <b>{area_name}</b>"
+                    f" for slots on or before {target_friendly}."
                 )
+                if already_linked:
+                    send_telegram(chat_id, f"ℹ️ Already linked! {watching_text}")
+                    continue
+                log.info("Linked Telegram chat %s via token", chat_id)
+                if prev_area_name:
+                    prev_detail = (
+                        f" for slots on or before {prev_target_friendly}"
+                        if prev_target_friendly
+                        else ""
+                    )
+                    send_telegram(
+                        chat_id,
+                        f"🔄 Switched! You were previously watching <b>{prev_area_name}</b>{prev_detail}.\n\n"
+                        f"✅ {watching_text}",
+                    )
+                else:
+                    send_telegram(chat_id, f"✅ Telegram linked! {watching_text}")
                 _send_current_slots_to_telegram(token, chat_id)
         except Exception as e:
             log.warning("Telegram listener error: %s", e)
