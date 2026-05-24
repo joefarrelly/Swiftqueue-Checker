@@ -177,10 +177,16 @@ def unsubscribe(token: str):
                 conn.execute(
                     "DELETE FROM active_slots WHERE url=?", (user["area_url"],)
                 )
+        from datetime import datetime as _dt
+
+        target_friendly = _dt.strptime(user["target_date"], "%Y-%m-%d").strftime(
+            "%-d %B %Y"
+        )
         for chat_id in subscribers:
             send_telegram(
                 chat_id,
-                f"👋 You've been unsubscribed from SwiftQueue alerts for <b>{area_name}</b>.",
+                f"👋 You've been unsubscribed from SwiftQueue alerts for <b>{area_name}</b>"
+                f" (slots on or before {target_friendly}).",
             )
         if request.accept_mimetypes.accept_json:
             return jsonify({"ok": True})
